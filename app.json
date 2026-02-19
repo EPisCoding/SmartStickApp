@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "SmartStickApp",
-    "slug": "SmartStickApp",
+    "slug": "smartstickapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -61,6 +61,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a9785f23-e589-49fc-848b-ba4f1dfe8544"
+      }
     }
   }
 }
