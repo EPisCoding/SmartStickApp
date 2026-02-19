@@ -1,98 +1,102 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { FlatList, NativeEventEmitter, NativeModules, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import BleManager from 'react-native-ble-manager';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+// 1. Tell TypeScript what a "Device" looks like
+interface BluetoothDevice {
+  id: string;
+  name?: string;
+}
 
-export default function HomeScreen() {
+const BleManagerModule = NativeModules.BleManager;
+const bleManagerEmitter = new NativeEventEmitter(BleManagerModule);
+
+export default function App() {
+  const [isScanning, setIsScanning] = useState(false);
+  // 2. Tell TypeScript this is specifically a list of BluetoothDevices
+  const [devices, setDevices] = useState<BluetoothDevice[]>([]);
+
+  useEffect(() => {
+    BleManager.start({ showAlert: false }).then(() => {
+      console.log("Bluetooth Engine Started");
+    });
+
+    const discoverListener = bleManagerEmitter.addListener(
+      'BleManagerDiscoverPeripheral',
+      // 3. Tell TypeScript the incoming data is a BluetoothDevice
+      (device: BluetoothDevice) => {
+        if (device.name) {
+          setDevices((prevDevices) => {
+            const deviceExists = prevDevices.find(d => d.id === device.id);
+            if (!deviceExists) return [...prevDevices, device];
+            return prevDevices;
+          });
+        }
+      }
+    );
+
+    const stopListener = bleManagerEmitter.addListener('BleManagerStopScan', () => {
+      setIsScanning(false);
+      console.log("Scan stopped");
+    });
+
+    return () => {
+      discoverListener.remove();
+      stopListener.remove();
+    };
+  }, []);
+
+  const startScan = () => {
+    if (!isScanning) {
+      setDevices([]); // Clear old list
+      setIsScanning(true);
+
+      const serviceUUIDs: string[] = []; // ✅ Typed variable instead of inline assertion
+      // @ts-ignore
+      BleManager.scan(serviceUUIDs, 5, true)
+        .then(() => console.log("Scanning..."))
+        .catch(err => {
+          console.error(err);
+          setIsScanning(false);
+        });
+    }
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <View style={styles.container}>
+      <Text style={styles.title}>Smart Stick Controller</Text>
+      
+      <TouchableOpacity 
+        style={[styles.button, isScanning && styles.buttonDisabled]} 
+        onPress={startScan}
+        disabled={isScanning}
+      >
+        <Text style={styles.buttonText}>
+          {isScanning ? 'Scanning for Stick...' : 'Find My Smart Stick'}
+        </Text>
+      </TouchableOpacity>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      <FlatList
+        data={devices}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View style={styles.deviceBox}>
+            <Text style={styles.deviceName}>{item.name}</Text>
+            <Text style={styles.deviceId}>{item.id}</Text>
+          </View>
+        )}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
+  container: { flex: 1, backgroundColor: '#f5f5f5', alignItems: 'center', paddingTop: 80 },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 30, color: '#333' },
+  button: { backgroundColor: '#007AFF', paddingVertical: 15, paddingHorizontal: 30, borderRadius: 10, marginBottom: 20 },
+  buttonDisabled: { backgroundColor: '#ccc' },
+  buttonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+  deviceBox: { backgroundColor: '#fff', padding: 15, borderRadius: 8, marginVertical: 5, width: 300, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
+  deviceName: { fontSize: 16, fontWeight: 'bold' },
+  deviceId: { fontSize: 12, color: '#666', marginTop: 5 }
 });
