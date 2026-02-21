@@ -68,12 +68,15 @@ export default function SmartStickController() {
         setDevices([]);
         setIsScanning(true);
         
-        console.log("Scanning safely without flooding memory...");
+        console.log("Starting secure scan...");
         
-        // FIX: The third argument is now 'false'. 
-        // This tells Apple: "Only tell me about a device ONCE, do not flood my memory!"
+        // FIX 1: We put the UUID string back in. 
+        // This prevents the Hermes engine from seeing an empty array and crashing with 0x10!
+        const targetUUIDs = ["1234abcd-0000-1000-8000-00805f9b34fb"]; 
+        
+        // FIX 2: We keep the 3rd argument as 'false' so it doesn't flood the memory!
         // @ts-ignore
-        BleManager.scan([], 5, false).then(() => {
+        BleManager.scan(targetUUIDs, 5, false).then(() => {
             console.log("Scan successfully started!");
         }).catch(err => {
             console.error("Scan failed:", err);
