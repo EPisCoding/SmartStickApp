@@ -70,18 +70,18 @@ const startScan = () => {
       
       console.log("Asking Apple to start scanning...");
       
-      // FIX: We are strictly defining the 4 exact pieces of data Apple wants.
-      // This physically prevents the bridge from accidentally passing an Array as the 4th argument!
-      const targetUUIDs = ["1234abcd-0000-1000-8000-00805f9b34fb"]; // 1. The Array
-      const scanTime = 5;                                           // 2. The Number
-      const allowDupes = true;                                      // 3. The Boolean
-      const scanOptions = {};                                       // 4. The strict Dictionary
+      const targetUUIDs = ["1234abcd-0000-1000-8000-00805f9b34fb"]; 
+      const scanTime = 5;                                           
+      const allowDupes = true;                                      
+      
+      // FIX: We added a dummy key. Because it is no longer empty, 
+      // the bridge CANNOT accidentally convert this into an Array!
+      const scanOptions = { forceDictionary: true };                                       
       
       // @ts-ignore
       BleManager.scan(targetUUIDs, scanTime, allowDupes, scanOptions).then(() => {
           console.log("Scan successfully started!");
       }).catch(err => {
-          // If the bridge fails, this catch block prints the error without crashing the app!
           console.error("Scan failed:", err);
           setIsScanning(false);
       });
