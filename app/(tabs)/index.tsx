@@ -63,6 +63,26 @@ export default function SmartStickController() {
     };
   }, []);
 
+  // Create the engine that listens for Apple's background signals
+  const BleManagerModule = NativeModules.BleManager;
+  const bleManagerEmitter = new NativeEventEmitter(BleManagerModule);
+
+  useEffect(() => {
+    // This listener waits for the "Stop scan" signal from Apple
+    const stopListener = bleManagerEmitter.addListener(
+      'BleManagerStopScan',
+      () => {
+        setIsScanning(false); // <--- This is the magic line that resets your button!
+        console.log('Scan finished. Button reset!');
+      }
+    );
+
+    // Cleanup the listener when the app closes
+    return () => {
+      stopListener.remove();
+    };
+  }, []);
+
   const startScan = () => {
       if (!isScanning) {
         setDevices([]);
