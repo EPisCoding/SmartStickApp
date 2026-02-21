@@ -70,13 +70,18 @@ const startScan = () => {
       
       console.log("Asking Apple to start scanning...");
       
-      // FIX: We are stripping away the 'true' and optional dictionaries.
-      // We are giving Swift exactly two things: The Target (Array) and the Time (Number).
-      // This leaves zero room for the bridge to get confused!
+      // FIX: We are strictly defining the 4 exact pieces of data Apple wants.
+      // This physically prevents the bridge from accidentally passing an Array as the 4th argument!
+      const targetUUIDs = ["1234abcd-0000-1000-8000-00805f9b34fb"]; // 1. The Array
+      const scanTime = 5;                                           // 2. The Number
+      const allowDupes = true;                                      // 3. The Boolean
+      const scanOptions = {};                                       // 4. The strict Dictionary
+      
       // @ts-ignore
-      BleManager.scan(["1234abcd-0000-1000-8000-00805f9b34fb"], 5).then(() => {
+      BleManager.scan(targetUUIDs, scanTime, allowDupes, scanOptions).then(() => {
           console.log("Scan successfully started!");
       }).catch(err => {
+          // If the bridge fails, this catch block prints the error without crashing the app!
           console.error("Scan failed:", err);
           setIsScanning(false);
       });
