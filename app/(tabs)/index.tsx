@@ -19,12 +19,12 @@ interface BluetoothDevice {
   name?: string;
 }
 
+// 1. Declare the Emitters ONE time outside the component
 const BleManagerModule = NativeModules.BleManager;
 const bleManagerEmitter = new NativeEventEmitter(BleManagerModule);
 
 export default function SmartStickController() {
   // --- APP NAVIGATION STATE ---
-  // This state controls which "page" we are looking at!
   const [activeTab, setActiveTab] = useState<'controls' | 'monitor'>('controls');
 
   // --- BLUETOOTH STATE ---
@@ -38,7 +38,7 @@ export default function SmartStickController() {
   const [isLaserEnabled, setIsLaserEnabled] = useState(false);
   const [gaitData, setGaitData] = useState<number[]>([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]); 
 
-  // --- BLUETOOTH ENGINE ---
+  // --- BLUETOOTH ENGINE & LISTENERS ---
   useEffect(() => {
     BleManager.start({ showAlert: false }).then(() => console.log("Bluetooth Engine Started"));
 
@@ -49,7 +49,11 @@ export default function SmartStickController() {
       }
     );
 
-    const stopListener = bleManagerEmitter.addListener('BleManagerStopScan', () => setIsScanning(false));
+    // FIX: Combined the Stop Listener so it only happens once!
+    const stopListener = bleManagerEmitter.addListener('BleManagerStopScan', () => {
+        setIsScanning(false);
+        console.log('Scan finished. Button reset!');
+    });
 
     const updateListener = bleManagerEmitter.addListener('BleManagerDidUpdateValueForCharacteristic', (data) => {
         const newValue = data.value[0]; 
@@ -63,26 +67,6 @@ export default function SmartStickController() {
     };
   }, []);
 
-  // Create the engine that listens for Apple's background signals
-  const BleManagerModule = NativeModules.BleManager;
-  const bleManagerEmitter = new NativeEventEmitter(BleManagerModule);
-
-  useEffect(() => {
-    // This listener waits for the "Stop scan" signal from Apple
-    const stopListener = bleManagerEmitter.addListener(
-      'BleManagerStopScan',
-      () => {
-        setIsScanning(false); // <--- This is the magic line that resets your button!
-        console.log('Scan finished. Button reset!');
-      }
-    );
-
-    // Cleanup the listener when the app closes
-    return () => {
-      stopListener.remove();
-    };
-  }, []);
-
   const startScan = () => {
       if (!isScanning) {
         setDevices([]);
@@ -90,9 +74,6 @@ export default function SmartStickController() {
         
         console.log("Starting v12.4+ Secure Scan...");
         
-        // FIX: The brand new v12.4+ syntax! 
-        // Everything goes inside ONE single dictionary object {}.
-        // We don't even need the @ts-ignore anymore because this is the correct TypeScript way now!
         BleManager.scan({
           serviceUUIDs: ["1234abcd-0000-1000-8000-00805f9b34fb"],
           seconds: 5,
@@ -252,7 +233,6 @@ const styles = StyleSheet.create({
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
   toggleLabel: { fontSize: 16, fontWeight: '500', color: '#333' },
 
-  // Navigation Tab Bar Styles
   tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderTopWidth: 1, borderColor: '#e0e0e0', paddingBottom: 20, paddingTop: 10 },
   tabButton: { flex: 1, paddingVertical: 12, alignItems: 'center' },
   tabButtonActive: { borderBottomWidth: 3, borderColor: '#007AFF' },
