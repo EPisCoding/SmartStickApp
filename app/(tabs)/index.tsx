@@ -68,15 +68,16 @@ export default function SmartStickController() {
         setDevices([]);
         setIsScanning(true);
         
-        console.log("Starting secure scan...");
+        console.log("Starting v12.4+ Secure Scan...");
         
-        // FIX 1: We put the UUID string back in. 
-        // This prevents the Hermes engine from seeing an empty array and crashing with 0x10!
-        const targetUUIDs = ["1234abcd-0000-1000-8000-00805f9b34fb"]; 
-        
-        // FIX 2: We keep the 3rd argument as 'false' so it doesn't flood the memory!
-        // @ts-ignore
-        BleManager.scan(targetUUIDs, 5, false).then(() => {
+        // FIX: The brand new v12.4+ syntax! 
+        // Everything goes inside ONE single dictionary object {}.
+        // We don't even need the @ts-ignore anymore because this is the correct TypeScript way now!
+        BleManager.scan({
+          serviceUUIDs: ["1234abcd-0000-1000-8000-00805f9b34fb"],
+          seconds: 5,
+          allowDuplicates: false
+        }).then(() => {
             console.log("Scan successfully started!");
         }).catch(err => {
             console.error("Scan failed:", err);
