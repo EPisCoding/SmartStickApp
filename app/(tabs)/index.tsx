@@ -63,30 +63,24 @@ export default function SmartStickController() {
     };
   }, []);
 
-const startScan = () => {
-    if (!isScanning) {
-      setDevices([]);
-      setIsScanning(true);
-      
-      console.log("Asking Apple to start scanning...");
-      
-      const targetUUIDs = ["1234abcd-0000-1000-8000-00805f9b34fb"]; 
-      const scanTime = 5;                                           
-      const allowDupes = true;                                      
-      
-      // FIX: We added a dummy key. Because it is no longer empty, 
-      // the bridge CANNOT accidentally convert this into an Array!
-      const scanOptions = { forceDictionary: true };                                       
-      
-      // @ts-ignore
-      BleManager.scan(targetUUIDs, scanTime, allowDupes, scanOptions).then(() => {
-          console.log("Scan successfully started!");
-      }).catch(err => {
-          console.error("Scan failed:", err);
-          setIsScanning(false);
-      });
-    }
-  };
+  const startScan = () => {
+      if (!isScanning) {
+        setDevices([]);
+        setIsScanning(true);
+        
+        console.log("Asking Apple to scan for ALL devices...");
+        
+        // FIX: Notice the empty brackets [] close immediately!
+        // The @ts-ignore tells VS Code to stop throwing red lines.
+        // @ts-ignore
+        BleManager.scan([], 5, true).then(() => {
+            console.log("Scan successfully started!");
+        }).catch(err => {
+            console.error("Scan failed:", err);
+            setIsScanning(false);
+        });
+      }
+    };
 
   const connectToDevice = async (id: string) => {
     try {
