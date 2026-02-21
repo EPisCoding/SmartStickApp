@@ -12,7 +12,8 @@
       "bundleIdentifier": "com.episcodingsorganization.smartstickapp",
       "supportsTablet": true,
       "infoPlist": {
-        "NSBluetoothAlwaysUsageDescription": "This app needs Bluetooth to connect to your Smart Stick for gait monitoring."
+        "NSBluetoothAlwaysUsageDescription": "This app needs Bluetooth to connect to your Smart Stick for gait monitoring.",
+        "NSBluetoothPeripheralUsageDescription": "This app needs Bluetooth to connect to your Smart Stick for gait monitoring."
       }
     },
     "android": {
