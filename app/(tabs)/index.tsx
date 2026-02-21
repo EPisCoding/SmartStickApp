@@ -68,9 +68,16 @@ const startScan = () => {
       setDevices([]);
       setIsScanning(true);
       
-      // @ts-ignore 
-      BleManager.scan(["1234abcd-0000-1000-8000-00805f9b34fb"], 5, true).catch(err => {
-          console.error(err);
+      console.log("Asking Apple to start scanning...");
+      
+      // FIX: We are stripping away the 'true' and optional dictionaries.
+      // We are giving Swift exactly two things: The Target (Array) and the Time (Number).
+      // This leaves zero room for the bridge to get confused!
+      // @ts-ignore
+      BleManager.scan(["1234abcd-0000-1000-8000-00805f9b34fb"], 5).then(() => {
+          console.log("Scan successfully started!");
+      }).catch(err => {
+          console.error("Scan failed:", err);
           setIsScanning(false);
       });
     }
