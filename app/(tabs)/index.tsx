@@ -68,12 +68,12 @@ export default function SmartStickController() {
         setDevices([]);
         setIsScanning(true);
         
-        console.log("Asking Apple to scan for ALL devices...");
+        console.log("Scanning safely without flooding memory...");
         
-        // FIX: Notice the empty brackets [] close immediately!
-        // The @ts-ignore tells VS Code to stop throwing red lines.
+        // FIX: The third argument is now 'false'. 
+        // This tells Apple: "Only tell me about a device ONCE, do not flood my memory!"
         // @ts-ignore
-        BleManager.scan([], 5, true).then(() => {
+        BleManager.scan([], 5, false).then(() => {
             console.log("Scan successfully started!");
         }).catch(err => {
             console.error("Scan failed:", err);
