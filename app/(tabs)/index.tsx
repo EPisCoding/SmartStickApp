@@ -63,12 +63,13 @@ export default function SmartStickController() {
     };
   }, []);
 
-  const startScan = () => {
+const startScan = () => {
     if (!isScanning) {
       setDevices([]);
       setIsScanning(true);
-      // @ts-ignore
-      BleManager.scan([], 5, true).catch(err => {
+      
+      // @ts-ignore 
+      BleManager.scan(["1234abcd-0000-1000-8000-00805f9b34fb"], 5, true).catch(err => {
           console.error(err);
           setIsScanning(false);
       });
