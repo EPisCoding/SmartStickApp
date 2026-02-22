@@ -38,19 +38,18 @@ export default function SmartStickController() {
   const [isHapticEnabled, setIsHapticEnabled] = useState(false);
   const [isLaserEnabled, setIsLaserEnabled] = useState(false);
   const [bpm, setBpm] = useState(100);
-  const [gaitData, setGaitData] = useState<number[]>([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]); 
+  const [gaitData, setGaitData] = useState<number[]>([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const [isPlayingSound, setIsPlayingSound] = useState(false); // NEW: tracks if sound is playing
 
   // --- BLUETOOTH ENGINE & LISTENERS ---
   useEffect(() => {
     BleManager.start({ showAlert: false }).then(() => console.log("Bluetooth Engine Started"));
 
     const discoverListener = bleManagerEmitter.addListener('BleManagerDiscoverPeripheral', (device: BluetoothDevice) => {
-        // Removed the 'device.name' filter so it catches everything
         setDevices((prev) => prev.find(d => d.id === device.id) ? prev : [...prev, device]);
       }
     );
 
-    // FIX: Combined the Stop Listener so it only happens once!
     const stopListener = bleManagerEmitter.addListener('BleManagerStopScan', () => {
         setIsScanning(false);
         console.log('Scan finished. Button reset!');
@@ -69,33 +68,32 @@ export default function SmartStickController() {
   }, []);
 
   const startScan = () => {
-        if (!isScanning) {
-          setDevices([]);
-          setIsScanning(true);
-          
-          console.log("Starting v12.4+ Wide Open Scan...");
-          
-          // FIX: Using the correct v12 Object { } syntax!
-          // serviceUUIDs is empty [] so it catches EVERYTHING like LightBlue
-          BleManager.scan({
-            serviceUUIDs: [], 
-            seconds: 5,
-            allowDuplicates: false
-          })
-            .then(() => {
-              console.log("Scan successfully started!");
-            })
-            .catch(err => {
-              console.error("Scan failed:", err);
-              setIsScanning(false);
-            });
-        }
-      };
+    if (!isScanning) {
+      setDevices([]);
+      setIsScanning(true);
+      
+      console.log("Starting v12.4+ Wide Open Scan...");
+      
+      BleManager.scan({
+        serviceUUIDs: [], 
+        seconds: 5,
+        allowDuplicates: false
+      })
+        .then(() => {
+          console.log("Scan successfully started!");
+        })
+        .catch(err => {
+          console.error("Scan failed:", err);
+          setIsScanning(false);
+        });
+    }
+  };
 
   const connectToDevice = async (id: string) => {
     try {
-      await BleManager.connect(id);
+      await BleManager.stopScan(); // Stop scanning before connecting
       setConnectedDeviceId(id);
+      await BleManager.connect(id);
       
       const SERVICE_UUID = "1234abcd-0000-1000-8000-00805f9b34fb";
       const CHAR_UUID = "abcd1234-0000-1000-8000-00805f9b34fb";
@@ -120,6 +118,17 @@ export default function SmartStickController() {
     }
   };
 
+  // NEW: Sends SND:1 to start sound, SND:0 to stop it
+  const handleSoundButton = async () => {
+    if (isPlayingSound) {
+      await sendCommandToStick("SND:0");
+      setIsPlayingSound(false);
+    } else {
+      await sendCommandToStick("SND:1");
+      setIsPlayingSound(true);
+    }
+  };
+
   const chartConfig = {
     backgroundGradientFrom: "#ffffff",
     backgroundGradientTo: "#ffffff",
@@ -133,7 +142,6 @@ export default function SmartStickController() {
     <SafeAreaView style={styles.mainContainer}>
       <Text style={styles.headerTitle}>Smart Stick</Text>
 
-      {/* DYNAMIC CONTENT AREA (Switches based on the active tab) */}
       <ScrollView style={styles.scrollArea} contentContainerStyle={{ alignItems: 'center', paddingBottom: 20 }}>
         
         {/* PAGE 1: CONTROLS */}
@@ -146,7 +154,7 @@ export default function SmartStickController() {
             <View style={styles.listContainer}>
               {devices.map((item) => (
                 <TouchableOpacity key={item.id} style={[styles.deviceBox, connectedDeviceId === item.id && styles.deviceBoxConnected]} onPress={() => connectToDevice(item.id)}>
-                  <Text style={styles.deviceName}>{item.name}</Text>
+                  <Text style={styles.deviceName}>{item.name || item.id}</Text>
                   {connectedDeviceId === item.id && <Text style={styles.connectedText}>Connected!</Text>}
                 </TouchableOpacity>
               ))}
@@ -167,7 +175,7 @@ export default function SmartStickController() {
                 <Switch value={isLaserEnabled} onValueChange={(v) => { setIsLaserEnabled(v); sendCommandToStick(v ? "LAS:1" : "LAS:0"); }} />
               </View>
 
-              {/* --- NEW RHYTHM SLIDER --- */}
+              {/* --- RHYTHM SLIDER --- */}
               <View style={styles.sliderContainer}>
                 <View style={styles.sliderHeader}>
                   <Text style={styles.toggleLabel}>Rhythm Speed</Text>
@@ -180,8 +188,8 @@ export default function SmartStickController() {
                   maximumValue={140}
                   step={1}
                   value={bpm}
-                  onValueChange={(val) => setBpm(val)} // Updates the number live as you drag
-                  onSlidingComplete={(val) => sendCommandToStick(`BPM:${val}`)} // Sends to Pi ONLY when you let go
+                  onValueChange={(val) => setBpm(val)}
+                  onSlidingComplete={(val) => sendCommandToStick(`BPM:${val}`)}
                   minimumTrackTintColor="#007AFF"
                   maximumTrackTintColor="#e0e0e0"
                   thumbTintColor="#007AFF"
@@ -192,6 +200,29 @@ export default function SmartStickController() {
                   <Text style={styles.sliderHint}>140 (Fast)</Text>
                 </View>
               </View>
+
+              {/* --- NEW SOUND BUTTON --- */}
+              <View style={styles.soundContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.soundButton,
+                    isPlayingSound && styles.soundButtonActive,
+                    !connectedDeviceId && styles.soundButtonDisabled
+                  ]}
+                  onPress={handleSoundButton}
+                  disabled={!connectedDeviceId} // Greyed out if not connected
+                >
+                  <Text style={styles.soundButtonIcon}>{isPlayingSound ? '🔇' : '🔊'}</Text>
+                  <Text style={styles.soundButtonText}>
+                    {!connectedDeviceId
+                      ? 'Connect First'
+                      : isPlayingSound
+                      ? 'Stop Sound'
+                      : 'Play Sound'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
             </View>
           </>
         )}
@@ -268,13 +299,20 @@ const styles = StyleSheet.create({
   tabButton: { flex: 1, paddingVertical: 12, alignItems: 'center' },
   tabButtonActive: { borderBottomWidth: 3, borderColor: '#007AFF' },
   tabText: { fontSize: 16, fontWeight: '600', color: '#8e8e93' },
-  tabTextActive: { color: '#007AFF' }, // <-- ADDED MISSING COMMA HERE
+  tabTextActive: { color: '#007AFF' },
 
-  // --- FIX: MOVED SLIDER STYLES INSIDE THE STYLESHEET ---
   sliderContainer: { marginTop: 20, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#f0f0f0' },
   sliderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   bpmValue: { fontSize: 16, fontWeight: 'bold', color: '#007AFF' },
   slider: { width: '100%', height: 40 },
   sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 5 },
-  sliderHint: { fontSize: 12, color: '#888', fontWeight: '500' }
-}); // <-- THE CLOSING BRACKETS ARE NOW AT THE VERY BOTTOM!
+  sliderHint: { fontSize: 12, color: '#888', fontWeight: '500' },
+
+  // --- NEW SOUND BUTTON STYLES ---
+  soundContainer: { marginTop: 20, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#f0f0f0', alignItems: 'center' },
+  soundButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#34C759', paddingVertical: 14, paddingHorizontal: 30, borderRadius: 12, width: '100%', gap: 10 },
+  soundButtonActive: { backgroundColor: '#FF3B30' }, // Turns red when playing so user knows to press to STOP
+  soundButtonDisabled: { backgroundColor: '#c7c7cc' },
+  soundButtonIcon: { fontSize: 20 },
+  soundButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+});
