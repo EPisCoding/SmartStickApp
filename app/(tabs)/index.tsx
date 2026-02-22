@@ -69,24 +69,21 @@ export default function SmartStickController() {
   }, []);
 
   const startScan = () => {
-      if (!isScanning) {
-        setDevices([]);
-        setIsScanning(true);
-        
-        console.log("Starting v12.4+ Secure Scan...");
-        
-        BleManager.scan({
-          serviceUUIDs: ["1234abcd-0000-1000-8000-00805f9b34fb"],
-          seconds: 5,
-          allowDuplicates: false
-        }).then(() => {
-            console.log("Scan successfully started!");
-        }).catch(err => {
-            console.error("Scan failed:", err);
-            setIsScanning(false);
+    if (!isScanning) {
+      setDevices([]);
+      setIsScanning(true);
+      console.log("Starting scan...");
+      // @ts-ignore
+      BleManager.scan([], 5, false)  // Empty array = find ALL devices
+        .then(() => {
+          console.log("Scan successfully started!");
+        })
+        .catch(err => {
+          console.error("Scan failed:", err);
+          setIsScanning(false);
         });
-      }
-    };
+    }
+  };
 
   const connectToDevice = async (id: string) => {
     try {
