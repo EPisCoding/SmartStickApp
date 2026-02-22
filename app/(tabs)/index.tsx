@@ -1,3 +1,4 @@
+import Slider from '@react-native-community/slider';
 import React, { useEffect, useState } from 'react';
 import {
   Dimensions,
@@ -36,6 +37,7 @@ export default function SmartStickController() {
   const [isRasEnabled, setIsRasEnabled] = useState(false);
   const [isHapticEnabled, setIsHapticEnabled] = useState(false);
   const [isLaserEnabled, setIsLaserEnabled] = useState(false);
+  const [bpm, setBpm] = useState(100);
   const [gaitData, setGaitData] = useState<number[]>([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]); 
 
   // --- BLUETOOTH ENGINE & LISTENERS ---
@@ -43,9 +45,8 @@ export default function SmartStickController() {
     BleManager.start({ showAlert: false }).then(() => console.log("Bluetooth Engine Started"));
 
     const discoverListener = bleManagerEmitter.addListener('BleManagerDiscoverPeripheral', (device: BluetoothDevice) => {
-        if (device.name) {
-          setDevices((prev) => prev.find(d => d.id === device.id) ? prev : [...prev, device]);
-        }
+        // Removed the 'device.name' filter so it catches everything
+        setDevices((prev) => prev.find(d => d.id === device.id) ? prev : [...prev, device]);
       }
     );
 
@@ -161,6 +162,32 @@ export default function SmartStickController() {
                 <Text style={styles.toggleLabel}>Laser Cueing</Text>
                 <Switch value={isLaserEnabled} onValueChange={(v) => { setIsLaserEnabled(v); sendCommandToStick(v ? "LAS:1" : "LAS:0"); }} />
               </View>
+
+              {/* --- NEW RHYTHM SLIDER --- */}
+              <View style={styles.sliderContainer}>
+                <View style={styles.sliderHeader}>
+                  <Text style={styles.toggleLabel}>Rhythm Speed</Text>
+                  <Text style={styles.bpmValue}>{bpm} BPM</Text>
+                </View>
+                
+                <Slider
+                  style={styles.slider}
+                  minimumValue={60}
+                  maximumValue={140}
+                  step={1}
+                  value={bpm}
+                  onValueChange={(val) => setBpm(val)} // Updates the number live as you drag
+                  onSlidingComplete={(val) => sendCommandToStick(`BPM:${val}`)} // Sends to Pi ONLY when you let go
+                  minimumTrackTintColor="#007AFF"
+                  maximumTrackTintColor="#e0e0e0"
+                  thumbTintColor="#007AFF"
+                />
+                
+                <View style={styles.sliderLabels}>
+                  <Text style={styles.sliderHint}>60 (Slow)</Text>
+                  <Text style={styles.sliderHint}>140 (Fast)</Text>
+                </View>
+              </View>
             </View>
           </>
         )}
@@ -237,5 +264,13 @@ const styles = StyleSheet.create({
   tabButton: { flex: 1, paddingVertical: 12, alignItems: 'center' },
   tabButtonActive: { borderBottomWidth: 3, borderColor: '#007AFF' },
   tabText: { fontSize: 16, fontWeight: '600', color: '#8e8e93' },
-  tabTextActive: { color: '#007AFF' }
-});
+  tabTextActive: { color: '#007AFF' }, // <-- ADDED MISSING COMMA HERE
+
+  // --- FIX: MOVED SLIDER STYLES INSIDE THE STYLESHEET ---
+  sliderContainer: { marginTop: 20, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#f0f0f0' },
+  sliderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  bpmValue: { fontSize: 16, fontWeight: 'bold', color: '#007AFF' },
+  slider: { width: '100%', height: 40 },
+  sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 5 },
+  sliderHint: { fontSize: 12, color: '#888', fontWeight: '500' }
+}); // <-- THE CLOSING BRACKETS ARE NOW AT THE VERY BOTTOM!
