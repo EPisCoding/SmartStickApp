@@ -69,24 +69,28 @@ export default function SmartStickController() {
   }, []);
 
   const startScan = () => {
-      if (!isScanning) {
-        setDevices([]);
-        setIsScanning(true);
-        
-        console.log("Starting v12.4+ Secure Scan...");
-        
-        BleManager.scan({
-          serviceUUIDs: ["1234abcd-0000-1000-8000-00805f9b34fb"],
-          seconds: 5,
-          allowDuplicates: false
-        }).then(() => {
-            console.log("Scan successfully started!");
-        }).catch(err => {
-            console.error("Scan failed:", err);
-            setIsScanning(false);
-        });
-      }
-    };
+        if (!isScanning) {
+          setDevices([]);
+          setIsScanning(true);
+          
+          console.log("Starting v12.4+ Wide Open Scan...");
+          
+          // FIX: Using the correct v12 Object { } syntax!
+          // serviceUUIDs is empty [] so it catches EVERYTHING like LightBlue
+          BleManager.scan({
+            serviceUUIDs: [], 
+            seconds: 5,
+            allowDuplicates: false
+          })
+            .then(() => {
+              console.log("Scan successfully started!");
+            })
+            .catch(err => {
+              console.error("Scan failed:", err);
+              setIsScanning(false);
+            });
+        }
+      };
 
   const connectToDevice = async (id: string) => {
     try {
